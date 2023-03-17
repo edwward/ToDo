@@ -10,7 +10,7 @@
 
     @if (db.TodoItems.Count() == 0)
     {
-        <div class="alert alert-info">You have not taks. Create one!</div>
+        <div class="alert alert-info">You have no taks. Create one!</div>
     }
 
     else
@@ -29,7 +29,7 @@
     }
  
     <div class="my-3">
-        <button type="button" class="btn btn-danger" @onclick="DeleteSelected">Delete Selected</button>
+        <button type="button" class="btn btn-danger" @onclick="DeleteSelectedTask">Delete Selected</button>
     </div> 
 
 </form>
@@ -58,7 +58,7 @@
         }
     }
 
-    private async Task DeleteSelected()
+    private async Task DeleteSelectedTask()
     {
         var todoItems = await db.TodoItems.ToListAsync();
         var selectedItems = todoItems.Where(t => t.IsSelected).ToList();
