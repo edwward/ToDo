@@ -26,12 +26,12 @@
                 </li>
             }
         </ul>
+
+        <div class="my-3">
+            <button type="button" class="btn btn-danger" @onclick="DeleteSelectedTask">Delete Selected</button>
+        </div>
     }
  
-    <div class="my-3">
-        <button type="button" class="btn btn-danger" @onclick="DeleteSelectedTask">Delete Selected</button>
-    </div> 
-
 </form>
 
 <form @onsubmit="AddTask" class="my-3">
@@ -43,6 +43,8 @@
 </form>
 
 @code {
+
+    private bool showDeleteButton = false;
 
     private async Task AddTask()
     {
@@ -58,6 +60,17 @@
         }
     }
 
+    //private async Task DeleteSelectedTask()
+    //{
+    //    var todoItems = await db.TodoItems.ToListAsync();
+    //    var selectedItems = todoItems.Where(t => t.IsSelected).ToList();
+    //    if (selectedItems.Any())
+    //    {
+    //        db.TodoItems.RemoveRange(selectedItems);
+    //        await db.SaveChangesAsync();
+    //    }
+    //}
+
     private async Task DeleteSelectedTask()
     {
         var todoItems = await db.TodoItems.ToListAsync();
@@ -66,6 +79,11 @@
         {
             db.TodoItems.RemoveRange(selectedItems);
             await db.SaveChangesAsync();
+
+            if (db.TodoItems.Count() == 0)
+            {
+                showDeleteButton = false;
+            }
         }
     }
 }
