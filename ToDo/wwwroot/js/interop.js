@@ -1,5 +1,10 @@
 ﻿window.getValue = function (id) {
-    return document.getElementById(id).value;
+    var element = document.getElementById(id);
+    if (element) {
+        return element.value;
+    } else {
+        return null;
+    }
 }
 
 window.setValue = function (id, value) {
@@ -8,4 +13,8 @@ window.setValue = function (id, value) {
 
 window.focusElement = function (id) {
     document.getElementById(id).focus();
+}
+
+function showNotification(taskName) {
+    new Notification(taskName, { body: 'This task is due now!' });
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ToDo;
 
@@ -10,9 +11,11 @@ using ToDo;
 namespace ToDo.Migrations
 {
     [DbContext(typeof(TodoContext))]
-    partial class TodoContextModelSnapshot : ModelSnapshot
+    [Migration("20230330122507_AddedDueDateTime")]
+    partial class AddedDueDateTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.3");
@@ -25,9 +28,6 @@ namespace ToDo.Migrations
 
                     b.Property<DateTime?>("DueDateTime")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("EnableTimer")
-                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsSelected")
                         .HasColumnType("INTEGER");

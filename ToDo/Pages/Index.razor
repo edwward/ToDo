@@ -1,8 +1,12 @@
 ﻿@page "/"
-@using ToDo
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.DependencyInjection;
+@using Blazored.Toast.Services;
+
 @inject TodoContext db
 @inject IJSRuntime JS
+@inject IToastService toastService
+@inject IServiceProvider ServiceProvider
 
 <h2>Todo List</h2>
 
@@ -21,8 +25,19 @@
                 <li class="list-group-item">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="todo_@item.Id" @bind="item.IsSelected">
-                        <label class="form-check-label" for="todo_@item.Id">@item.TaskName</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-check-label" for="todo_@item.Id">@item.TaskName</label>
+                            @if (item.DueDateTime.HasValue)
+                            {
+                                <span class="badge bg-info text-dark"> due @item.DueDateTime.Value.ToString("MM/dd/yyyy hh:mm tt")</span>
+                            }
+                            @if (item.IsSelected && item.DueDateTime.HasValue && item.DueDateTime.Value > DateTime.Now)
+                            {
+                                ScheduleTaskNotifications();
+                            }
+                        </div>
                     </div>
+
                 </li>
             }
         </ul>
@@ -31,45 +46,84 @@
             <button type="button" class="btn btn-danger" @onclick="DeleteSelectedTask">Delete Selected</button>
         </div>
     }
- 
+
+
 </form>
 
 <form @onsubmit="AddTask" class="my-3">
     <div class="form-group">
-        <label  for="taskName">Task Name:</label>
+        <label for="taskName">Task Name:</label>
         <input type="text" class="form-control" id="taskName" name="taskName" required>
     </div>
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="enableTimer" @bind="enableTimer">
+        <label class="form-check-label" for="enableTimer">
+            Enable Timer
+        </label>
+    </div>
+    @if (enableTimer)
+    {
+        <div class="form-group">
+            <label for="dueDate">Due Date</label>
+            <input type="datetime-local" class="form-control" id="dueDate">
+        </div>
+    }
+
     <button type="submit" class="btn btn-secondary mt-2">Add Task</button>
 </form>
 
 @code {
 
-    private bool showDeleteButton = false;
+    private bool enableTimer = false;
 
     private async Task AddTask()
     {
         var taskName = await JS.InvokeAsync<string>("getValue", "taskName");
-        if (!string.IsNullOrWhiteSpace(taskName))
+        var dueDateStr = await JS.InvokeAsync<string>("getValue", "dueDate");
+       
+        if (!string.IsNullOrWhiteSpace(dueDateStr)
+            && DateTime.TryParse(dueDateStr, out var dueDate))
         {
-            var todoItem = new TodoItem { TaskName = taskName };
+            bool enableTimer = true;
+            
+            var todoItem = new TodoItem
+                {
+                    TaskName = taskName,
+                    DueDateTime = dueDate,
+                    EnableTimer = enableTimer // Set EnableTimer to true for tasks with due date
+                };
+
             db.TodoItems.Add(todoItem);
             await db.SaveChangesAsync();
 
             await JS.InvokeVoidAsync("setValue", "taskName", "");
+            await JS.InvokeVoidAsync("setValue", "dueDate", "");
+            await JS.InvokeVoidAsync("setValue", "enableTimer", "true");
+            await JS.InvokeVoidAsync("focusElement", "taskName");
+
+            ScheduleTaskNotifications();
+
+        }
+
+        else
+        {
+            var todoItem = new TodoItem
+                {
+                    TaskName = taskName,
+                    DueDateTime = null,
+                    EnableTimer = enableTimer // Set EnableTimer to false for tasks without due date
+                };
+
+            db.TodoItems.Add(todoItem);
+            await db.SaveChangesAsync();
+
+            await JS.InvokeVoidAsync("setValue", "taskName", "");
+            await JS.InvokeVoidAsync("setValue", "enableTimer", "false");
             await JS.InvokeVoidAsync("focusElement", "taskName");
         }
     }
 
-    //private async Task DeleteSelectedTask()
-    //{
-    //    var todoItems = await db.TodoItems.ToListAsync();
-    //    var selectedItems = todoItems.Where(t => t.IsSelected).ToList();
-    //    if (selectedItems.Any())
-    //    {
-    //        db.TodoItems.RemoveRange(selectedItems);
-    //        await db.SaveChangesAsync();
-    //    }
-    //}
+
 
     private async Task DeleteSelectedTask()
     {
@@ -79,11 +133,41 @@
         {
             db.TodoItems.RemoveRange(selectedItems);
             await db.SaveChangesAsync();
-
-            if (db.TodoItems.Count() == 0)
-            {
-                showDeleteButton = false;
-            }
         }
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        ScheduleTaskNotifications();
+    }
+
+
+    private async Task ScheduleTaskNotifications()
+    {
+        var todoItems = await db.TodoItems.ToListAsync();
+        var notificationTasks = new List<Task>();
+
+        foreach (var item in todoItems)
+        {
+            if (item.DueDateTime.HasValue)
+            {
+                var timeToDue = item.DueDateTime.Value - DateTime.Now;
+                if (timeToDue > TimeSpan.Zero)
+                {
+                    notificationTasks.Add(ShowNotificationAfterDelay(item, timeToDue));
+                }
+            }
+        }
+
+        await Task.WhenAll(notificationTasks);
+    }
+
+    private async Task ShowNotificationAfterDelay(TodoItem item, TimeSpan delay)
+    {
+        await Task.Delay(delay);
+        toastService.ShowInfo($"Task {item.TaskName} is now due!");
+    }
+
+
 }
